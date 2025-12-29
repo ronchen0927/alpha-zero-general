@@ -1,4 +1,5 @@
 *.pyc
+__pycache__/
 .DS_Store
 
 /temp/
@@ -7,7 +8,25 @@
 
 # checkpoint
 checkpoints/
+minishogi_checkpoints/
+minishogi_records/
 
 # For PyCharm users
 .idea/
 
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node.js
+node_modules/
+dist/
+
+# Build artifacts
+*.egg-info/
+build/
+
+# Misc
+*.log
+.env

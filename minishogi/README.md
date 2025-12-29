@@ -267,5 +267,74 @@ uv run mypy minishogi/ --ignore-missing-imports
 - `numpy` - Board representation
 - `pydantic` - Data models
 - `tqdm` - Progress bars
+- `fastapi` - Web backend
+- `uvicorn` - ASGI server
 
 Dev dependencies: `pytest`, `ruff`, `mypy`
+
+---
+
+## Web 前端
+
+### 啟動開發伺服器
+
+```bash
+# Terminal 1: 後端 (Port 8000)
+uv run uvicorn web.backend.main:app --reload --port 8000
+
+# Terminal 2: 前端 (Port 5173)
+cd web/frontend && npm run dev
+```
+
+訪問 **http://localhost:5173**
+
+### 功能
+
+| 頁面 | 網址 | 說明 |
+|------|------|------|
+| 對弈 | `/` | 人類 vs AI 即時對弈 |
+| 訓練監控 | `/dashboard` | Loss 曲線、勝率、Checkpoints |
+| 棋譜回放 | `/replay` | 查看/分享對局記錄 |
+
+### Web 架構
+
+```mermaid
+graph TB
+    subgraph Frontend["Vue 3 + Vite"]
+        A[Game.vue] 
+        B[Dashboard.vue]
+        C[Replay.vue]
+    end
+    
+    subgraph Backend["FastAPI"]
+        D[/api/game]
+        E[/api/train]
+        F[/api/records]
+    end
+    
+    A <-->|WebSocket| D
+    B -->|REST| E
+    C -->|REST| F
+    D --> G[MiniShogi Core]
+    E --> G
+    F --> G
+```
+
+### API 端點
+
+```
+POST /api/game/new           建立新對局
+GET  /api/game/{id}          取得對局狀態
+POST /api/game/{id}/move     執行走法
+GET  /api/game/{id}/analysis AI 分析
+WS   /api/game/ws/{id}       即時對弈
+
+GET  /api/train/status       訓練狀態
+GET  /api/train/history      訓練歷史
+GET  /api/train/checkpoints  模型清單
+
+GET  /api/records            棋譜列表
+GET  /api/records/{id}       單一棋譜
+POST /api/records            儲存棋譜
+GET  /api/records/{id}/share 分享連結
+```
