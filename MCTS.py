@@ -49,6 +49,16 @@ class MCTS():
 
         counts = [x ** (1. / temp) for x in counts]
         counts_sum = float(sum(counts))
+        if counts_sum == 0:
+            # No moves were visited - return uniform over valid moves
+            valids = self.game.getValidMoves(canonicalBoard, 1)
+            valids_sum = float(np.sum(valids))
+            if valids_sum > 0:
+                probs = [float(v) / valids_sum for v in valids]
+            else:
+                # No valid moves - return uniform (shouldn't happen normally)
+                probs = [1.0 / len(counts)] * len(counts)
+            return probs
         probs = [x / counts_sum for x in counts]
         return probs
 
