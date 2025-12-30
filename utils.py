@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AverageMeter(object):
@@ -47,10 +47,8 @@ class TrainingArgs(BaseModel):
         description="Number of iterations to keep training examples"
     )
     
-    class Config:
-        """Pydantic config for pickle support."""
-        frozen = False  # Allow mutation
-        extra = "allow"  # Allow extra fields for flexibility
+    # Pydantic V2 config
+    model_config = ConfigDict(frozen=False, extra="allow")
 
 
 class dotdict(dict):
