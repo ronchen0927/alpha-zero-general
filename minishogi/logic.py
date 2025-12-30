@@ -21,12 +21,35 @@ class Board:
     """
 
     # Movement directions for each piece type
-    # Directions are (row_delta, col_delta) from the moving player's perspective
-    GOLD_MOVES = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, 0)]
-    SILVER_MOVES = [(-1, -1), (-1, 0), (-1, 1), (1, -1), (1, 1)]
+    # For Player 1: "forward" means row decreasing (toward row 0)
+    # For Player 2: "forward" means row increasing (toward row 4)
+    # We define moves for Player 1, then flip for Player 2
+
+    # Gold: forward (1), left (1), right (1), backward (1), diagonal-forward (2)
+    # Cannot move: diagonal-backward
+    GOLD_MOVES_P1 = [
+        (-1, 0),   # forward
+        (0, -1),   # left
+        (0, 1),    # right
+        (1, 0),    # backward
+        (-1, -1),  # diagonal forward-left
+        (-1, 1),   # diagonal forward-right
+    ]
+
+    # Silver: diagonal all 4 directions + forward only
+    # Cannot move: left, right, backward
+    SILVER_MOVES_P1 = [
+        (-1, 0),   # forward
+        (-1, -1),  # diagonal forward-left
+        (-1, 1),   # diagonal forward-right
+        (1, -1),   # diagonal backward-left
+        (1, 1),    # diagonal backward-right
+    ]
+
+    # King: all 8 directions (symmetric, no flip needed)
     KING_MOVES = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
-    # Sliding piece directions
+    # Sliding piece directions (symmetric)
     ROOK_DIRS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
     BISHOP_DIRS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
@@ -45,33 +68,47 @@ class Board:
         # Current player: 1 = Player 1 (sente), -1 = Player 2 (gote)
         self.current_player = 1
 
+        # Position history for Sennichite (千日手) detection
+        # Maps position hash -> list of (move_number, was_check) tuples
+        self.position_history: dict[str, list[tuple[int, bool]]] = {}
+        self.move_count = 0
+
+        # Consecutive check counter for perpetual check detection
+        self.consecutive_checks: dict[int, int] = {1: 0, -1: 0}
+
         self._setup_initial_position()
 
     def _setup_initial_position(self) -> None:
         """Set up the initial piece positions for MiniShogi.
 
-        Initial layout:
-        Row 0 (P2 back): K  G  S  B  R  (Player 2's pieces, negative)
-        Row 1 (P2 pawn): .  .  .  .  P  (Player 2's pawn)
+        Initial layout (Wikipedia standard):
+        Row 0 (P2 back): r  b  s  g  k  (Player 2's pieces, K on right)
+        Row 1 (P2 pawn): .  .  .  .  p  (Player 2's pawn in front of King)
         Row 2 (middle):  .  .  .  .  .
-        Row 3 (P1 pawn): P  .  .  .  .  (Player 1's pawn)
-        Row 4 (P1 back): R  B  S  G  K  (Player 1's pieces, positive)
+        Row 3 (P1 pawn): P  .  .  .  .  (Player 1's pawn in front of King)
+        Row 4 (P1 back): K  G  S  B  R  (Player 1's pieces, K on left)
+
+        Note: Each side mirrors the other. King is placed closest to player's left.
         """
         # Player 2 (negative values) - back rank (row 0)
-        self.board[0, 0] = -PieceType.KING
-        self.board[0, 1] = -PieceType.GOLD
+        # From P2's perspective (looking from row 0 toward row 4):
+        # Their King is on their left = col 4 from our view
+        self.board[0, 4] = -PieceType.KING
+        self.board[0, 3] = -PieceType.GOLD
         self.board[0, 2] = -PieceType.SILVER
-        self.board[0, 3] = -PieceType.BISHOP
-        self.board[0, 4] = -PieceType.ROOK
-        self.board[1, 4] = -PieceType.PAWN  # P2's pawn
+        self.board[0, 1] = -PieceType.BISHOP
+        self.board[0, 0] = -PieceType.ROOK
+        self.board[1, 4] = -PieceType.PAWN  # P2's pawn in front of King
 
         # Player 1 (positive values) - back rank (row 4)
-        self.board[4, 4] = PieceType.KING
-        self.board[4, 3] = PieceType.GOLD
+        # From P1's perspective (looking from row 4 toward row 0):
+        # Their King is on their left = col 0 from our view
+        self.board[4, 0] = PieceType.KING
+        self.board[4, 1] = PieceType.GOLD
         self.board[4, 2] = PieceType.SILVER
-        self.board[4, 1] = PieceType.BISHOP
-        self.board[4, 0] = PieceType.ROOK
-        self.board[3, 0] = PieceType.PAWN  # P1's pawn
+        self.board[4, 3] = PieceType.BISHOP
+        self.board[4, 4] = PieceType.ROOK
+        self.board[3, 0] = PieceType.PAWN  # P1's pawn in front of King
 
     def copy(self) -> Board:
         """Create a deep copy of the board."""
@@ -81,6 +118,10 @@ class Board:
         new_board.board = self.board.copy()
         new_board.hands = [h.copy() for h in self.hands]
         new_board.current_player = self.current_player
+        # Copy history for Sennichite detection
+        new_board.position_history = {k: v.copy() for k, v in self.position_history.items()}
+        new_board.move_count = self.move_count
+        new_board.consecutive_checks = self.consecutive_checks.copy()
         return new_board
 
     def _get_hand_index(self, player: int) -> int:
@@ -110,6 +151,52 @@ class Board:
         else:
             return row >= self.n - self.config.promotion_zone_size
 
+    def get_position_hash(self) -> str:
+        """Generate a hash of the current position for repetition detection.
+
+        Includes: board state, hands, and current player.
+        """
+        board_str = self.board.tobytes().hex()
+        hands_str = str(sorted([(k.value, v) for k, v in self.hands[0].items()])) + \
+                    str(sorted([(k.value, v) for k, v in self.hands[1].items()]))
+        return f"{board_str}|{hands_str}|{self.current_player}"
+
+    def check_sennichite(self) -> int:
+        """Check for Sennichite (千日手) and Perpetual Check (千日王手).
+
+        Returns:
+            0: No repetition
+            1: Player 1 loses (sennichite or perpetual check by P1)
+            -1: Player 2 loses (perpetual check by P2)
+        """
+        pos_hash = self.get_position_hash()
+        if pos_hash not in self.position_history:
+            return 0
+
+        occurrences = self.position_history[pos_hash]
+        if len(occurrences) < 3:  # Need 4 total (including current)
+            return 0
+
+        # Position repeated 4 times - check for perpetual check
+        # If the player giving check all 4 times, they lose
+        check_counts = {1: 0, -1: 0}
+        for _, was_check_by in occurrences:
+            if was_check_by:
+                check_counts[self.current_player] += 1
+
+        # Current position also counts
+        if self.is_in_check(-self.current_player):
+            check_counts[self.current_player] += 1
+
+        # Perpetual check: if one player was always giving check
+        if check_counts[1] >= 4:
+            return 1  # Player 1 loses (perpetual check)
+        if check_counts[-1] >= 4:
+            return -1  # Player 2 loses (perpetual check)
+
+        # Normal Sennichite: sente (Player 1) loses
+        return 1
+
     def _get_piece_moves(
         self, piece_type: PieceType, from_sq: tuple[int, int], player: int
     ) -> list[tuple[int, int]]:
@@ -138,9 +225,10 @@ class Board:
 
         elif piece_type == PieceType.GOLD or piece_type == PieceType.TOKIN or piece_type == PieceType.P_SILVER:
             # Gold and promoted pieces move like Gold
-            for dr, dc in self.GOLD_MOVES:
-                # Adjust direction based on player
-                actual_dr = dr * dir_mult
+            # For Player 1: use moves as defined
+            # For Player 2: flip row direction (negate dr)
+            for dr, dc in self.GOLD_MOVES_P1:
+                actual_dr = dr if player == 1 else -dr
                 new_row, new_col = row + actual_dr, col + dc
                 if self._is_valid_square(new_row, new_col):
                     owner, _ = self._get_piece_at(new_row, new_col)
@@ -148,8 +236,10 @@ class Board:
                         moves.append((new_row, new_col))
 
         elif piece_type == PieceType.SILVER:
-            for dr, dc in self.SILVER_MOVES:
-                actual_dr = dr * dir_mult
+            # For Player 1: use moves as defined
+            # For Player 2: flip row direction
+            for dr, dc in self.SILVER_MOVES_P1:
+                actual_dr = dr if player == 1 else -dr
                 new_row, new_col = row + actual_dr, col + dc
                 if self._is_valid_square(new_row, new_col):
                     owner, _ = self._get_piece_at(new_row, new_col)
@@ -390,8 +480,24 @@ class Board:
         self.current_player = -player
 
     def execute_move(self, move: Move) -> None:
-        """Execute a move (with basic validation)."""
+        """Execute a move (with basic validation).
+
+        Also records position history for Sennichite detection.
+        """
+        # Record if opponent is in check before the move
+        opponent = -self.current_player
+
+        # Execute the move
         self._execute_move_unchecked(move)
+
+        # Record position for repetition detection
+        self.move_count += 1
+        pos_hash = self.get_position_hash()
+        is_giving_check = self.is_in_check(self.current_player)
+
+        if pos_hash not in self.position_history:
+            self.position_history[pos_hash] = []
+        self.position_history[pos_hash].append((self.move_count, is_giving_check))
 
     def is_game_over(self) -> int:
         """Check if the game is over.
@@ -401,6 +507,12 @@ class Board:
             1 if player 1 wins
             -1 if player 2 wins
         """
+        # Check for Sennichite (千日手) first
+        sennichite_result = self.check_sennichite()
+        if sennichite_result != 0:
+            # sennichite_result indicates who LOSES
+            return -sennichite_result  # Return winner
+
         # Check if current player has any legal moves
         legal_moves = self.get_legal_moves()
 

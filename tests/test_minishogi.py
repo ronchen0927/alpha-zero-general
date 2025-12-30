@@ -73,21 +73,26 @@ class TestBoard:
     """Tests for Board class."""
 
     def test_initial_position(self):
-        """Test initial board setup."""
+        """Test initial board setup (Wikipedia standard)."""
         board = Board()
 
-        # Player 2 back rank (row 0)
-        assert board.board[0, 0] == -PieceType.KING
-        assert board.board[0, 1] == -PieceType.GOLD
-        assert board.board[0, 4] == -PieceType.ROOK
+        # Player 2 back rank (row 0): r b s g k
+        assert board.board[0, 0] == -PieceType.ROOK
+        assert board.board[0, 1] == -PieceType.BISHOP
+        assert board.board[0, 2] == -PieceType.SILVER
+        assert board.board[0, 3] == -PieceType.GOLD
+        assert board.board[0, 4] == -PieceType.KING
 
-        # Player 1 back rank (row 4)
-        assert board.board[4, 4] == PieceType.KING
-        assert board.board[4, 0] == PieceType.ROOK
+        # Player 1 back rank (row 4): K G S B R
+        assert board.board[4, 0] == PieceType.KING
+        assert board.board[4, 1] == PieceType.GOLD
+        assert board.board[4, 2] == PieceType.SILVER
+        assert board.board[4, 3] == PieceType.BISHOP
+        assert board.board[4, 4] == PieceType.ROOK
 
-        # Pawns
-        assert board.board[1, 4] == -PieceType.PAWN
-        assert board.board[3, 0] == PieceType.PAWN
+        # Pawns in front of Kings
+        assert board.board[1, 4] == -PieceType.PAWN  # P2's pawn in front of King
+        assert board.board[3, 0] == PieceType.PAWN   # P1's pawn in front of King
 
     def test_copy(self):
         """Test board copy is independent."""

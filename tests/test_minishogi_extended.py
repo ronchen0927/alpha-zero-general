@@ -444,5 +444,80 @@ class TestEdgeCases:
         assert drop_last.is_drop is True
 
 
+class TestSennichite:
+    """Tests for Sennichite (千日手) repetition rules."""
+
+    def test_position_hash_deterministic(self):
+        """Same position should produce same hash."""
+        board1 = Board()
+        board2 = Board()
+
+        hash1 = board1.get_position_hash()
+        hash2 = board2.get_position_hash()
+
+        assert hash1 == hash2
+
+    def test_position_hash_changes_after_move(self):
+        """Position hash changes after a move."""
+        board = Board()
+        hash_before = board.get_position_hash()
+
+        moves = board.get_legal_moves()
+        if moves:
+            board.execute_move(moves[0])
+            hash_after = board.get_position_hash()
+            assert hash_before != hash_after
+
+    def test_position_history_recorded(self):
+        """Position history is recorded after moves."""
+        board = Board()
+        assert len(board.position_history) == 0
+
+        moves = board.get_legal_moves()
+        if moves:
+            board.execute_move(moves[0])
+            assert len(board.position_history) == 1
+            assert board.move_count == 1
+
+    def test_no_sennichite_initially(self):
+        """No sennichite at game start."""
+        board = Board()
+        result = board.check_sennichite()
+        assert result == 0
+
+    def test_sennichite_detection(self):
+        """Sennichite is detected after 4 repetitions."""
+        board = Board()
+        board.board = np.zeros((5, 5), dtype=np.int8)
+
+        board.board[4, 0] = PieceType.KING
+        board.board[4, 4] = PieceType.ROOK
+        board.board[0, 4] = -PieceType.KING
+        board.board[0, 0] = -PieceType.ROOK
+        board.current_player = 1
+
+        # Simulate repeating position by directly adding to history
+        pos_hash = board.get_position_hash()
+        board.position_history[pos_hash] = [
+            (1, False), (5, False), (9, False)  # 3 previous occurrences
+        ]
+        board.move_count = 12
+
+        # 4th occurrence should trigger sennichite (P1 loses)
+        result = board.check_sennichite()
+        assert result == 1  # Player 1 loses
+
+    def test_copy_preserves_history(self):
+        """Board copy preserves position history."""
+        board = Board()
+        moves = board.get_legal_moves()
+        if moves:
+            board.execute_move(moves[0])
+
+        copy = board.copy()
+        assert len(copy.position_history) == len(board.position_history)
+        assert copy.move_count == board.move_count
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
