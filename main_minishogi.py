@@ -33,6 +33,7 @@ args = dotdict(
         "numMCTSSims": 50,  # MCTS simulations per move
         "arenaCompare": 40,  # Games for model comparison
         "cpuct": 1.5,  # Exploration constant
+        "maxSearchDepth": 200,  # Max MCTS search depth (matches game max_moves)
         "checkpoint": "./minishogi_checkpoints/",
         "load_model": False,
         "load_folder_file": ("./minishogi_checkpoints/", "best.pth.tar"),

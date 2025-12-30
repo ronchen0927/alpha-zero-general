@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 EPS = 1e-8
-MAX_SEARCH_DEPTH = 200  # Prevent infinite recursion in search (matches game max_moves)
+DEFAULT_MAX_SEARCH_DEPTH = 500  # Default max depth to prevent infinite recursion
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +42,17 @@ class MCTS():
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
 
         if temp == 0:
-            bestAs = np.array(np.argwhere(counts == np.max(counts))).flatten()
+            max_count = np.max(counts)
+            if max_count == 0:
+                # No moves were visited - return uniform over valid moves
+                valids = self.game.getValidMoves(canonicalBoard, 1)
+                valids_sum = float(np.sum(valids))
+                if valids_sum > 0:
+                    probs = [float(v) / valids_sum for v in valids]
+                else:
+                    probs = [1.0 / len(counts)] * len(counts)
+                return probs
+            bestAs = np.array(np.argwhere(counts == max_count)).flatten()
             bestA = np.random.choice(bestAs)
             probs = [0] * len(counts)
             probs[bestA] = 1
@@ -82,8 +92,9 @@ class MCTS():
         Returns:
             v: the negative of the value of the current canonicalBoard
         """
-        # Prevent infinite recursion
-        if depth >= MAX_SEARCH_DEPTH:
+        # Prevent infinite recursion - use args.maxSearchDepth if available, else default
+        max_depth = getattr(self.args, 'maxSearchDepth', DEFAULT_MAX_SEARCH_DEPTH)
+        if depth >= max_depth:
             return 0  # Return draw value
 
         s = self.game.stringRepresentation(canonicalBoard)
