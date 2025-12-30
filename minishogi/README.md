@@ -258,5 +258,6 @@ uv run mypy minishogi/ --ignore-missing-imports
 | `pydantic` | 資料模型 |
 | `fastapi` | Web 後端 |
 | `uvicorn` | ASGI 伺服器 |
+| `coloredlogs` | 彩色日誌輸出 |
 
 開發依賴：`pytest`、`ruff`、`mypy`

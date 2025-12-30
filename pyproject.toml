@@ -13,6 +13,7 @@ dependencies = [
     "uvicorn>=0.40.0",
     "python-multipart>=0.0.21",
     "websockets>=15.0.1",
+    "coloredlogs>=15.0.0",
 ]
 
 [project.optional-dependencies]

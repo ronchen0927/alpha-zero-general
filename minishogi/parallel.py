@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+import multiprocessing as mp
 import pickle
 from collections import deque
-from multiprocessing import Pool
 from random import shuffle
 
 import numpy as np
@@ -108,9 +108,10 @@ def parallel_self_play(
         for _ in range(total_games)
     ]
 
-    # Execute in parallel
+    # Execute in parallel using 'spawn' context for CUDA compatibility
     all_examples = []
-    with Pool(config.num_workers) as pool:
+    ctx = mp.get_context('spawn')
+    with ctx.Pool(config.num_workers) as pool:
         results = pool.map(_execute_episode_worker, worker_args)
         for episode_examples in results:
             all_examples.extend(episode_examples)
