@@ -190,11 +190,11 @@ class MiniShogiGame(Game):
         Returns:
             A unique string representation of the board state.
         """
-        # Include board, hands, and current player
+        # Include board, hands, current player, and move count for proper termination
         board_str = board.board.tobytes()
         hand1 = tuple(sorted(board.hands[0].items()))
         hand2 = tuple(sorted(board.hands[1].items()))
-        return str((board_str, hand1, hand2, board.current_player))
+        return str((board_str, hand1, hand2, board.current_player, board.move_count))
 
     def getScore(self, board: Board, player: int) -> float:
         """Get a heuristic score for the board position.
