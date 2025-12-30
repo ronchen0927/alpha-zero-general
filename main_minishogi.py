@@ -16,29 +16,27 @@ from Coach import Coach
 from minishogi import MiniShogiGame, ParallelConfig
 from minishogi.parallel import ParallelCoach
 from minishogi.pytorch import NNetWrapper as nn
-from utils import dotdict
+from utils import TrainingArgs
 
 log = logging.getLogger(__name__)
 
 coloredlogs.install(level="INFO")
 
-# Training configuration
-args = dotdict(
-    {
-        "numIters": 100,  # Number of training iterations
-        "numEps": 100,  # Number of self-play games per iteration
-        "tempThreshold": 15,  # Temperature threshold for exploration
-        "updateThreshold": 0.55,  # New model acceptance threshold
-        "maxlenOfQueue": 200000,  # Max training examples in queue
-        "numMCTSSims": 50,  # MCTS simulations per move
-        "arenaCompare": 40,  # Games for model comparison
-        "cpuct": 1.5,  # Exploration constant
-        "maxSearchDepth": 200,  # Max MCTS search depth (matches game max_moves)
-        "checkpoint": "./minishogi_checkpoints/",
-        "load_model": False,
-        "load_folder_file": ("./minishogi_checkpoints/", "best.pth.tar"),
-        "numItersForTrainExamplesHistory": 20,
-    }
+# Training configuration using Pydantic model
+args = TrainingArgs(
+    numIters=100,
+    numEps=100,
+    tempThreshold=15,
+    updateThreshold=0.55,
+    maxlenOfQueue=200000,
+    numMCTSSims=50,
+    arenaCompare=40,
+    cpuct=1.5,
+    maxSearchDepth=200,  # Matches game max_moves
+    checkpoint="./minishogi_checkpoints/",
+    load_model=False,
+    load_folder_file=("./minishogi_checkpoints/", "best.pth.tar"),
+    numItersForTrainExamplesHistory=20,
 )
 
 # Parallel training configuration
