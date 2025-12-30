@@ -80,10 +80,42 @@ class MiniShogiGame(Game):
         # Convert action index to Move object
         move = Move.from_action_index(action, self.n)
 
+        # For player -1, actions are from canonical (flipped) perspective
+        # Need to transform coordinates to original board perspective
+        if player == -1:
+            move = self._transform_move_for_player(move, player)
+
         # Execute the move
         b.execute_move(move)
 
         return (b, -player)
+
+    def _transform_move_for_player(self, move: Move, player: int) -> Move:
+        """Transform move coordinates from canonical to original perspective.
+
+        For player -1, the canonical board is vertically flipped,
+        so we need to flip row coordinates.
+        """
+        if player == 1:
+            return move
+
+        # Flip row coordinates: new_row = (n-1) - old_row
+        n = self.n
+
+        if move.is_drop:
+            new_to_sq = (n - 1 - move.to_sq[0], move.to_sq[1])
+            return Move(
+                to_sq=new_to_sq,
+                drop_piece=move.drop_piece
+            )
+        else:
+            new_from_sq = (n - 1 - move.from_sq[0], move.from_sq[1])
+            new_to_sq = (n - 1 - move.to_sq[0], move.to_sq[1])
+            return Move(
+                from_sq=new_from_sq,
+                to_sq=new_to_sq,
+                promote=move.promote
+            )
 
     def getValidMoves(self, board: Board, player: int) -> np.ndarray:
         """Return a binary vector of valid moves.

@@ -448,6 +448,12 @@ class Board:
             hand_idx = self._get_hand_index(player)
             piece_type = move.drop_piece
             assert piece_type is not None
+            # Check if piece exists in hand
+            if piece_type not in self.hands[hand_idx] or self.hands[hand_idx][piece_type] <= 0:
+                raise ValueError(
+                    f"Cannot drop {piece_type.name}: not in hand. "
+                    f"Player {player}, hand: {self.hands[hand_idx]}"
+                )
             self.hands[hand_idx][piece_type] -= 1
             if self.hands[hand_idx][piece_type] == 0:
                 del self.hands[hand_idx][piece_type]
