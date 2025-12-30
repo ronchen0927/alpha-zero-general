@@ -506,7 +506,12 @@ class Board:
             0 if game is ongoing
             1 if player 1 wins
             -1 if player 2 wins
+            Small value (1e-4) for draw
         """
+        # Check for max moves (draw by length limit)
+        if self.move_count >= self.config.max_moves:
+            return 1e-4  # Draw - return small value
+
         # Check for Sennichite (千日手) first
         sennichite_result = self.check_sennichite()
         if sennichite_result != 0:

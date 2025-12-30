@@ -142,6 +142,7 @@ class GameConfig(BaseModel):
 
     board_size: int = Field(default=5, description="Board size (5x5 for MiniShogi)")
     promotion_zone_size: int = Field(default=1, description="Rows in promotion zone")
+    max_moves: int = Field(default=200, description="Maximum moves before draw")
 
     @property
     def action_size(self) -> int:
