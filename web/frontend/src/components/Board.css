@@ -1,0 +1,98 @@
+.board {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.col-labels {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-left: 1.5rem;
+}
+
+.col-labels span {
+    width: 60px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.board-grid {
+    display: flex;
+}
+
+.row-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+}
+
+.row-labels span {
+    height: 60px;
+    width: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.squares {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.row {
+    display: flex;
+}
+
+.square {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light {
+    background: var(--board-light);
+}
+
+.dark {
+    background: var(--board-dark);
+}
+
+.selected {
+    background: #7cb342 !important;
+}
+
+.last-move {
+    background: rgba(255, 215, 0, 0.4) !important;
+}
+
+.square:hover {
+    filter: brightness(1.1);
+}
+
+.piece {
+    font-size: 1.8rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.player1 {
+    color: #1a1a1a;
+}
+
+.player2 {
+    color: #8b0000;
+    transform: rotate(180deg);
+}
