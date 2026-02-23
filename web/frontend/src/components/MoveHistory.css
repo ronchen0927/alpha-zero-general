@@ -1,0 +1,82 @@
+.move-history {
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.move-history h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.move-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 0.25rem;
+}
+
+.move-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.move-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}
+
+.no-moves {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.move-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: 'Courier New', monospace;
+    transition: background 0.15s;
+}
+
+.move-entry:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.move-entry.sente {
+    border-left: 2px solid #1a1a1a;
+}
+
+.move-entry.gote {
+    border-left: 2px solid #c41e00;
+}
+
+.move-number {
+    color: var(--text-secondary);
+    min-width: 2rem;
+    text-align: right;
+    font-size: 0.75rem;
+}
+
+.move-player-badge {
+    font-size: 0.9rem;
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+.move-piece-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.move-text {
+    color: var(--text-primary);
+    white-space: nowrap;
+}

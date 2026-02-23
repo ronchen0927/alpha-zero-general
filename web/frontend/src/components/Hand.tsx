@@ -1,4 +1,5 @@
 import React from 'react'
+import { ShogiPiece } from './ShogiPiece'
 import './Hand.css'
 
 interface HandProps {
@@ -6,10 +7,6 @@ interface HandProps {
     player: number
     selected?: number | null
     onSelect?: (pieceType: number) => void
-}
-
-const PIECE_CHARS: Record<number, string> = {
-    1: '歩', 2: '銀', 3: '金', 4: '角', 5: '飛'
 }
 
 export const Hand: React.FC<HandProps> = ({
@@ -47,7 +44,11 @@ export const Hand: React.FC<HandProps> = ({
                             className={`hand-piece ${selected === pieceType ? 'selected' : ''}`}
                             onClick={() => handleClick(pieceType)}
                         >
-                            {PIECE_CHARS[pieceType]}
+                            <ShogiPiece
+                                pieceType={pieceType}
+                                player={player as 1 | -1}
+                                size={36}
+                            />
                         </div>
                     ))
                 ) : (

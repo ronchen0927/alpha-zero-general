@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
 import { Analysis } from '../components/Analysis'
+import { MoveHistory } from '../components/MoveHistory'
 import './GamePage.css'
 
 interface GameState {
@@ -12,6 +13,7 @@ interface GameState {
     game_ended: number
     last_move?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
     ai_move?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
+    moves_history: { from_sq?: [number, number] | null; to_sq: [number, number]; promote?: boolean; drop_piece?: number | null }[]
 }
 
 interface DecodedMove {
@@ -516,47 +518,53 @@ export const GamePage: React.FC = () => {
                 )}
             </div>
 
-            {/* Game Info */}
-            <div className="game-info card">
-                <div className="mode-badge">{modeLabel}</div>
-                <div className="status">
-                    {gameEndedText ? (
-                        <span className="game-ended">{gameEndedText}</span>
-                    ) : settings.mode === 'aivai' ? (
-                        <span>
-                            {currentPlayerText}の番
-                            <span className="move-counter">（第 {moveCount} 手）</span>
-                        </span>
-                    ) : (
-                        <span>{currentPlayerText}の番</span>
-                    )}
-                </div>
-                <div className="actions">
-                    <button className="btn btn-primary" onClick={handleNewGame}>
-                        新對局
-                    </button>
-                    {settings.mode === 'aivai' && gameState && gameState.game_ended === 0 && (
-                        <>
-                            <button className="btn btn-secondary" onClick={handlePause}>
-                                {autoPlaying ? '⏸ 暫停' : '▶ 繼續'}
-                            </button>
-                            {!autoPlaying && (
-                                <button className="btn btn-secondary" onClick={handleStep}>
-                                    ⏭ 下一步
-                                </button>
-                            )}
-                        </>
-                    )}
-                    {settings.mode !== 'aivai' && gameState && gameState.game_ended === 0 && (
-                        <button className="btn btn-danger" onClick={handleResign}>
-                            投降
+            {/* Side panel: info + move history */}
+            <div className="side-panel">
+                {/* Game Info */}
+                <div className="game-info card">
+                    <div className="mode-badge">{modeLabel}</div>
+                    <div className="status">
+                        {gameEndedText ? (
+                            <span className="game-ended">{gameEndedText}</span>
+                        ) : settings.mode === 'aivai' ? (
+                            <span>
+                                {currentPlayerText}の番
+                                <span className="move-counter">（第 {moveCount} 手）</span>
+                            </span>
+                        ) : (
+                            <span>{currentPlayerText}の番</span>
+                        )}
+                    </div>
+                    <div className="actions">
+                        <button className="btn btn-primary" onClick={handleNewGame}>
+                            新對局
                         </button>
-                    )}
+                        {settings.mode === 'aivai' && gameState && gameState.game_ended === 0 && (
+                            <>
+                                <button className="btn btn-secondary" onClick={handlePause}>
+                                    {autoPlaying ? '⏸ 暫停' : '▶ 繼續'}
+                                </button>
+                                {!autoPlaying && (
+                                    <button className="btn btn-secondary" onClick={handleStep}>
+                                        ⏭ 下一步
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        {settings.mode !== 'aivai' && gameState && gameState.game_ended === 0 && (
+                            <button className="btn btn-danger" onClick={handleResign}>
+                                投降
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Analysis Panel */}
-            {gameId && gameState && <Analysis gameId={gameId} />}
+                {/* Move History */}
+                {gameState && <MoveHistory moves={gameState.moves_history} />}
+
+                {/* Analysis Panel */}
+                {gameId && gameState && <Analysis gameId={gameId} />}
+            </div>
         </div>
     )
 }

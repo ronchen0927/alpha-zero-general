@@ -13,6 +13,14 @@
     gap: 1rem;
 }
 
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+}
+
 .board-wrapper {
     position: relative;
 }

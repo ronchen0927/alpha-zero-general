@@ -57,6 +57,7 @@ class GameState(BaseModel):
     game_ended: int
     last_move: dict | None = None
     ai_move: dict | None = None  # info about AI's last move
+    moves_history: list[dict] = []  # all moves played so far
 
 
 class AIAnalysis(BaseModel):
@@ -185,6 +186,7 @@ async def get_game_state(game_id: str) -> GameState:
         valid_moves=valid_indices,
         game_ended=game_ended,
         last_move=session["moves_history"][-1] if session["moves_history"] else None,
+        moves_history=session["moves_history"],
     )
 
 

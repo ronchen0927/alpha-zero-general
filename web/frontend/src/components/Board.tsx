@@ -1,4 +1,5 @@
 import React from 'react'
+import { ShogiPiece } from './ShogiPiece'
 import './Board.css'
 
 interface BoardProps {
@@ -8,16 +9,6 @@ interface BoardProps {
     lastMove?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
     highlightedSquares?: [number, number][]
     onSquareClick?: (row: number, col: number) => void
-}
-
-const PIECE_CHARS: Record<number, string> = {
-    1: '歩', 2: '銀', 3: '金', 4: '角', 5: '飛', 6: '王',
-    7: 'と', 8: '全', 9: '馬', 10: '龍'
-}
-
-function getPieceChar(value: number): string {
-    if (value === 0) return ''
-    return PIECE_CHARS[Math.abs(value)] || '?'
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -86,9 +77,11 @@ export const Board: React.FC<BoardProps> = ({
                                         onClick={() => handleClick(row, col)}
                                     >
                                         {piece !== 0 && (
-                                            <span className={`piece ${piece > 0 ? 'player1' : 'player2'}`}>
-                                                {getPieceChar(piece)}
-                                            </span>
+                                            <ShogiPiece
+                                                pieceType={Math.abs(piece)}
+                                                player={piece > 0 ? 1 : -1}
+                                                size={46}
+                                            />
                                         )}
                                         {highlighted && piece === 0 && (
                                             <span className="move-dot" />

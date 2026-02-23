@@ -1,0 +1,34 @@
+.shogi-piece {
+    display: inline-block;
+    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.3));
+    transition: transform 0.1s ease;
+}
+
+.shogi-piece.gote {
+    transform: rotate(180deg);
+}
+
+.piece-body {
+    fill: #f5e6c8;
+}
+
+.piece-outline {
+    stroke: #8b7355;
+}
+
+.piece-kanji {
+    font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho Pro', serif;
+    font-weight: 700;
+    fill: #1a1a1a;
+    pointer-events: none;
+}
+
+.piece-kanji.promoted {
+    fill: #c41e00;
+}
+
+/* Gote kanji needs to be un-rotated so it reads correctly */
+.shogi-piece.gote .piece-kanji {
+    transform: rotate(180deg);
+    transform-origin: 50px 55px;
+}
