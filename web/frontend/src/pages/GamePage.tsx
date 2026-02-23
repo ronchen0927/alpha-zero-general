@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
 import { Analysis } from '../components/Analysis'
@@ -11,6 +11,7 @@ interface GameState {
     valid_moves: number[]
     game_ended: number
     last_move?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
+    ai_move?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
 }
 
 interface DecodedMove {
@@ -20,13 +21,14 @@ interface DecodedMove {
     drop_piece: number | null
 }
 
-type GameMode = 'human' | 'ai'
+type GameMode = 'human' | 'ai' | 'aivai'
 type AiAlgorithm = 'random' | 'greedy' | 'minimax' | 'alphabeta' | 'negamax' | 'mcts' | 'alphazero'
 
 interface GameSettings {
     mode: GameMode
     aiAlgorithm: AiAlgorithm
-    playerSide: 1 | -1  // which side the human plays (1 = sente/first, -1 = gote/second)
+    aiAlgorithm2: AiAlgorithm
+    playerSide: 1 | -1
 }
 
 const AI_ALGORITHMS: { value: AiAlgorithm; label: string; description: string; category: string }[] = [
@@ -68,10 +70,46 @@ function decodeAction(action: number): DecodedMove | null {
     }
 }
 
+function algoLabel(v: AiAlgorithm): string {
+    return AI_ALGORITHMS.find(a => a.value === v)?.label || v
+}
+
+/** Render a categorized algorithm picker */
+const AlgorithmPicker: React.FC<{
+    label: string
+    value: AiAlgorithm
+    onChange: (v: AiAlgorithm) => void
+}> = ({ label, value, onChange }) => (
+    <div className="setup-section">
+        <label className="setup-label">{label}</label>
+        <div className="algorithm-list">
+            {(['基礎', '傳統搜索', '現代方法'] as const).map(cat => {
+                const algos = AI_ALGORITHMS.filter(a => a.category === cat)
+                return (
+                    <div key={cat} className="algo-group">
+                        <div className="algo-category">{cat}</div>
+                        {algos.map(algo => (
+                            <button
+                                key={algo.value}
+                                className={`algo-btn ${value === algo.value ? 'active' : ''}`}
+                                onClick={() => onChange(algo.value)}
+                            >
+                                <span className="algo-name">{algo.label}</span>
+                                <span className="algo-desc">{algo.description}</span>
+                            </button>
+                        ))}
+                    </div>
+                )
+            })}
+        </div>
+    </div>
+)
+
 /** Game Setup Screen */
 const GameSetup: React.FC<{ onStart: (settings: GameSettings) => void }> = ({ onStart }) => {
     const [mode, setMode] = useState<GameMode>('human')
     const [aiAlgorithm, setAiAlgorithm] = useState<AiAlgorithm>('random')
+    const [aiAlgorithm2, setAiAlgorithm2] = useState<AiAlgorithm>('alphabeta')
     const [playerSide, setPlayerSide] = useState<1 | -1>(1)
 
     return (
@@ -88,45 +126,29 @@ const GameSetup: React.FC<{ onStart: (settings: GameSettings) => void }> = ({ on
                             onClick={() => setMode('human')}
                         >
                             <span className="mode-icon">👥</span>
-                            <span className="mode-text">人類 vs 人類</span>
+                            <span className="mode-text">人 vs 人</span>
                         </button>
                         <button
                             className={`mode-btn ${mode === 'ai' ? 'active' : ''}`}
                             onClick={() => setMode('ai')}
                         >
                             <span className="mode-icon">🤖</span>
-                            <span className="mode-text">人類 vs AI</span>
+                            <span className="mode-text">人 vs AI</span>
+                        </button>
+                        <button
+                            className={`mode-btn ${mode === 'aivai' ? 'active' : ''}`}
+                            onClick={() => setMode('aivai')}
+                        >
+                            <span className="mode-icon">⚔️</span>
+                            <span className="mode-text">AI vs AI</span>
                         </button>
                     </div>
                 </div>
 
-                {/* AI Options — only visible in AI mode */}
+                {/* Human vs AI options */}
                 {mode === 'ai' && (
                     <>
-                        <div className="setup-section">
-                            <label className="setup-label">AI 演算法</label>
-                            <div className="algorithm-list">
-                                {(['基礎', '傳統搜索', '現代方法'] as const).map(cat => {
-                                    const algos = AI_ALGORITHMS.filter(a => a.category === cat)
-                                    return (
-                                        <div key={cat} className="algo-group">
-                                            <div className="algo-category">{cat}</div>
-                                            {algos.map(algo => (
-                                                <button
-                                                    key={algo.value}
-                                                    className={`algo-btn ${aiAlgorithm === algo.value ? 'active' : ''}`}
-                                                    onClick={() => setAiAlgorithm(algo.value)}
-                                                >
-                                                    <span className="algo-name">{algo.label}</span>
-                                                    <span className="algo-desc">{algo.description}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-
+                        <AlgorithmPicker label="AI 演算法" value={aiAlgorithm} onChange={setAiAlgorithm} />
                         <div className="setup-section">
                             <label className="setup-label">你的陣營</label>
                             <div className="side-selector">
@@ -147,10 +169,18 @@ const GameSetup: React.FC<{ onStart: (settings: GameSettings) => void }> = ({ on
                     </>
                 )}
 
+                {/* AI vs AI options */}
+                {mode === 'aivai' && (
+                    <>
+                        <AlgorithmPicker label="☗ 先手 AI" value={aiAlgorithm} onChange={setAiAlgorithm} />
+                        <AlgorithmPicker label="☖ 後手 AI" value={aiAlgorithm2} onChange={setAiAlgorithm2} />
+                    </>
+                )}
+
                 {/* Start Button */}
                 <button
                     className="btn btn-primary start-btn"
-                    onClick={() => onStart({ mode, aiAlgorithm, playerSide })}
+                    onClick={() => onStart({ mode, aiAlgorithm, aiAlgorithm2, playerSide })}
                 >
                     開始對局
                 </button>
@@ -164,23 +194,29 @@ export const GamePage: React.FC = () => {
     const [gameState, setGameState] = useState<GameState | null>(null)
     const [loading, setLoading] = useState(false)
     const [thinking, setThinking] = useState(false)
+    const [autoPlaying, setAutoPlaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [selectedSquare, setSelectedSquare] = useState<[number, number] | null>(null)
     const [selectedHandPiece, setSelectedHandPiece] = useState<number | null>(null)
     const [showSetup, setShowSetup] = useState(true)
+    const [moveCount, setMoveCount] = useState(0)
     const [settings, setSettings] = useState<GameSettings>({
         mode: 'human',
         aiAlgorithm: 'random',
+        aiAlgorithm2: 'alphabeta',
         playerSide: 1,
     })
+    const autoPlayRef = useRef(false)
 
     const currentPlayerText = gameState
         ? gameState.current_player === 1 ? '先手（黒）' : '後手（白）'
         : ''
 
-    const modeLabel = settings.mode === 'human'
-        ? '人類 vs 人類'
-        : `人類 vs AI (${AI_ALGORITHMS.find(a => a.value === settings.aiAlgorithm)?.label || settings.aiAlgorithm})`
+    const modeLabel = (() => {
+        if (settings.mode === 'human') return '人類 vs 人類'
+        if (settings.mode === 'ai') return `人類 vs AI (${algoLabel(settings.aiAlgorithm)})`
+        return `${algoLabel(settings.aiAlgorithm)} vs ${algoLabel(settings.aiAlgorithm2)}`
+    })()
 
     const gameEndedText = gameState && gameState.game_ended !== 0
         ? gameState.game_ended === 1 ? '先手勝利！' : '後手勝利！'
@@ -228,6 +264,7 @@ export const GamePage: React.FC = () => {
         setError(null)
         setSelectedSquare(null)
         setSelectedHandPiece(null)
+        setMoveCount(0)
         try {
             const res = await fetch('/api/game/new', {
                 method: 'POST',
@@ -237,6 +274,7 @@ export const GamePage: React.FC = () => {
                     ai_first: newSettings.mode === 'ai' && newSettings.playerSide === -1,
                     mode: newSettings.mode,
                     ai_algorithm: newSettings.aiAlgorithm,
+                    ai_algorithm_2: newSettings.aiAlgorithm2,
                 })
             })
             const data = await res.json()
@@ -244,6 +282,12 @@ export const GamePage: React.FC = () => {
             const stateRes = await fetch(`/api/game/${data.game_id}`)
             const stateData = await stateRes.json()
             setGameState(stateData)
+
+            // Auto-play for AI vs AI
+            if (newSettings.mode === 'aivai') {
+                autoPlayRef.current = true
+                setAutoPlaying(true)
+            }
         } catch (e) {
             setError((e as Error).message)
         } finally {
@@ -252,13 +296,53 @@ export const GamePage: React.FC = () => {
     }
 
     const handleNewGame = () => {
+        autoPlayRef.current = false
+        setAutoPlaying(false)
         setShowSetup(true)
         setGameId(null)
         setGameState(null)
         setError(null)
         setSelectedSquare(null)
         setSelectedHandPiece(null)
+        setMoveCount(0)
     }
+
+    const handlePause = () => {
+        autoPlayRef.current = !autoPlayRef.current
+        setAutoPlaying(autoPlayRef.current)
+    }
+
+    const handleStep = useCallback(async () => {
+        if (!gameId) return
+        try {
+            const res = await fetch(`/api/game/${gameId}/ai-step`, { method: 'POST' })
+            if (res.ok) {
+                const data = await res.json()
+                setGameState(data)
+                setMoveCount(c => c + 1)
+                setError(null)
+            }
+        } catch (e) {
+            setError((e as Error).message)
+        }
+    }, [gameId])
+
+    // AI vs AI auto-play loop
+    useEffect(() => {
+        if (settings.mode !== 'aivai' || !gameId) return
+        if (gameState?.game_ended !== 0) {
+            autoPlayRef.current = false
+            setAutoPlaying(false)
+            return
+        }
+        if (!autoPlayRef.current) return
+
+        const timer = setTimeout(async () => {
+            await handleStep()
+        }, 600)  // 600ms delay between moves
+
+        return () => clearTimeout(timer)
+    }, [gameState, gameId, settings.mode, autoPlaying, handleStep])
 
     const makeMove = async (
         fromSq: [number, number] | null,
@@ -317,6 +401,7 @@ export const GamePage: React.FC = () => {
 
     const handleSquareClick = (row: number, col: number) => {
         if (!gameState || gameState.game_ended !== 0 || thinking) return
+        if (settings.mode === 'aivai') return // no interaction in AI vs AI
 
         if (selectedHandPiece !== null) {
             const key = `${row},${col}`
@@ -372,6 +457,7 @@ export const GamePage: React.FC = () => {
     }
 
     const handleHandPieceClick = (pieceType: number) => {
+        if (settings.mode === 'aivai') return
         if (selectedHandPiece === pieceType) {
             setSelectedHandPiece(null)
         } else {
@@ -436,6 +522,11 @@ export const GamePage: React.FC = () => {
                 <div className="status">
                     {gameEndedText ? (
                         <span className="game-ended">{gameEndedText}</span>
+                    ) : settings.mode === 'aivai' ? (
+                        <span>
+                            {currentPlayerText}の番
+                            <span className="move-counter">（第 {moveCount} 手）</span>
+                        </span>
                     ) : (
                         <span>{currentPlayerText}の番</span>
                     )}
@@ -444,7 +535,19 @@ export const GamePage: React.FC = () => {
                     <button className="btn btn-primary" onClick={handleNewGame}>
                         新對局
                     </button>
-                    {gameState && gameState.game_ended === 0 && (
+                    {settings.mode === 'aivai' && gameState && gameState.game_ended === 0 && (
+                        <>
+                            <button className="btn btn-secondary" onClick={handlePause}>
+                                {autoPlaying ? '⏸ 暫停' : '▶ 繼續'}
+                            </button>
+                            {!autoPlaying && (
+                                <button className="btn btn-secondary" onClick={handleStep}>
+                                    ⏭ 下一步
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {settings.mode !== 'aivai' && gameState && gameState.game_ended === 0 && (
                         <button className="btn btn-danger" onClick={handleResign}>
                             投降
                         </button>

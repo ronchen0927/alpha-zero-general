@@ -24,8 +24,9 @@ class NewGameRequest(BaseModel):
 
     vs_ai: bool = False
     ai_first: bool = False
-    mode: str = "manual"  # "manual" (both sides) or "ai"
+    mode: str = "manual"  # "manual", "ai", or "aivai"
     ai_algorithm: str = "random"
+    ai_algorithm_2: str = "random"  # second AI for aivai mode
 
 
 class NewGameResponse(BaseModel):
@@ -75,34 +76,33 @@ def _board_to_hands(board: Board) -> list[dict[str, int]]:
 
 def _execute_ai_move(session: dict[str, Any]) -> dict | None:
     """If it's the AI's turn, make a move and return move info."""
-    if not session.get("vs_ai"):
-        return None
     if session.get("resigned"):
         return None
 
     game: MiniShogiGame = session["game"]
     board: Board = session["board"]
-    ai_player_side: int = session["ai_player"]
+    current = board.current_player
 
-    # Only move if it's the AI's turn
-    if board.current_player != ai_player_side:
+    # Check if an AI is registered for this side
+    ai_players = session.get("ai_players", {})
+    ai = ai_players.get(current)
+    if ai is None:
         return None
 
     # Check if game already ended
-    if game.getGameEnded(board, board.current_player) != 0:
+    if game.getGameEnded(board, current) != 0:
         return None
 
-    ai = session["ai"]
-    action = ai.play(board, ai_player_side)
+    action = ai.play(board, current)
 
     # Decode action to Move for execution
     # Actions from getValidMoves are in original coordinates — no transform needed
     move = Move.from_action_index(action)
 
     new_board = board.copy()
-    new_board.current_player = ai_player_side
+    new_board.current_player = current
     new_board.execute_move(move)
-    new_board.current_player = -ai_player_side
+    new_board.current_player = -current
 
     session["board"] = new_board
 
@@ -126,21 +126,27 @@ async def create_game(request: NewGameRequest) -> NewGameResponse:
     session: dict[str, Any] = {
         "game": game,
         "board": board,
-        "vs_ai": request.vs_ai,
+        "vs_ai": request.vs_ai or request.mode == "aivai",
         "ai_first": request.ai_first,
+        "mode": request.mode,
         "moves_history": [],
     }
 
-    if request.vs_ai:
+    if request.mode == "ai":
         ai = create_ai_player(request.ai_algorithm, game)
-        session["ai"] = ai
-        session["ai_algorithm"] = request.ai_algorithm
-        # AI plays the side the human didn't pick
         session["ai_player"] = -1 if not request.ai_first else 1
+        session["ai_players"] = {session["ai_player"]: ai}
+        session["ai_algorithm"] = request.ai_algorithm
 
-        # If AI goes first, make its move now
         if request.ai_first:
             _execute_ai_move(session)
+
+    elif request.mode == "aivai":
+        ai1 = create_ai_player(request.ai_algorithm, game)
+        ai2 = create_ai_player(request.ai_algorithm_2, game)
+        session["ai_players"] = {1: ai1, -1: ai2}
+        session["ai_algorithm"] = request.ai_algorithm
+        session["ai_algorithm_2"] = request.ai_algorithm_2
 
     active_games[game_id] = session
 
@@ -243,6 +249,23 @@ async def resign(game_id: str) -> GameState:
     session["resigned"] = board.current_player
 
     return await get_game_state(game_id)
+
+
+@router.post("/{game_id}/ai-step", response_model=GameState)
+async def ai_step(game_id: str) -> GameState:
+    """Make one AI move for the current player. Used for AI vs AI auto-play."""
+    if game_id not in active_games:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    session = active_games[game_id]
+    ai_move_info = _execute_ai_move(session)
+
+    if ai_move_info is None:
+        raise HTTPException(status_code=400, detail="No AI move available")
+
+    state = await get_game_state(game_id)
+    state.ai_move = ai_move_info
+    return state
 
 
 @router.get("/{game_id}/analysis", response_model=AIAnalysis)

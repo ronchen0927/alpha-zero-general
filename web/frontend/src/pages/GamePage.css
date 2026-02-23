@@ -116,7 +116,7 @@
 /* Mode Selector (Human vs AI) */
 .mode-selector {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 0.75rem;
 }
 
@@ -150,8 +150,24 @@
 }
 
 .mode-text {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 500;
+}
+
+.move-counter {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-left: 0.3rem;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Algorithm List */
