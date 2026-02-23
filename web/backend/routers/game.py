@@ -21,8 +21,9 @@ active_games: dict[str, dict[str, Any]] = {}
 class NewGameRequest(BaseModel):
     """Request to create a new game."""
 
-    vs_ai: bool = True
+    vs_ai: bool = False
     ai_first: bool = False
+    mode: str = "manual"  # "manual" (both sides) or "ai"
 
 
 class NewGameResponse(BaseModel):
@@ -98,9 +99,16 @@ async def get_game_state(game_id: str) -> GameState:
     game: MiniShogiGame = session["game"]
     board: Board = session["board"]
 
-    valids = game.getValidMoves(board, board.current_player)
-    valid_indices = [i for i, v in enumerate(valids) if v == 1]
-    game_ended = game.getGameEnded(board, board.current_player)
+    # Check for resignation
+    resigned = session.get("resigned")
+    if resigned:
+        # The player who resigned loses
+        game_ended = -resigned  # opponent wins
+        valid_indices: list[int] = []
+    else:
+        valids = game.getValidMoves(board, board.current_player)
+        valid_indices = [i for i, v in enumerate(valids) if v == 1]
+        game_ended = int(game.getGameEnded(board, board.current_player))
 
     return GameState(
         board=board.board.tolist(),
@@ -110,7 +118,7 @@ async def get_game_state(game_id: str) -> GameState:
             {str(k.value): v for k, v in board.hands[1].items()},
         ],
         valid_moves=valid_indices,
-        game_ended=int(game_ended),
+        game_ended=game_ended,
         last_move=session["moves_history"][-1] if session["moves_history"] else None,
     )
 
@@ -124,8 +132,9 @@ async def make_move(game_id: str, request: MoveRequest) -> GameState:
     session = active_games[game_id]
     game: MiniShogiGame = session["game"]
     board: Board = session["board"]
+    player = board.current_player
 
-    # Create move object
+    # Create move object (coordinates are in display/original form)
     drop_piece = PieceType(request.drop_piece) if request.drop_piece else None
     move = Move(
         from_sq=request.from_sq,
@@ -134,14 +143,19 @@ async def make_move(game_id: str, request: MoveRequest) -> GameState:
         drop_piece=drop_piece,
     )
 
-    # Validate move
+    # Validate move against original-coordinate valid moves
     action = move.to_action_index()
-    valids = game.getValidMoves(board, board.current_player)
+    valids = game.getValidMoves(board, player)
     if valids[action] != 1:
         raise HTTPException(status_code=400, detail="Invalid move")
 
-    # Execute move
-    new_board, _ = game.getNextState(board, board.current_player, action)
+    # Execute the move directly on a board copy
+    # (avoid getNextState which expects canonical actions for player -1)
+    new_board = board.copy()
+    new_board.current_player = player
+    new_board.execute_move(move)
+    new_board.current_player = -player
+
     session["board"] = new_board
     session["moves_history"].append({
         "from_sq": request.from_sq,
@@ -149,6 +163,22 @@ async def make_move(game_id: str, request: MoveRequest) -> GameState:
         "promote": request.promote,
         "drop_piece": request.drop_piece,
     })
+
+    return await get_game_state(game_id)
+
+
+@router.post("/{game_id}/resign", response_model=GameState)
+async def resign(game_id: str) -> GameState:
+    """Current player resigns. The opponent wins."""
+    if game_id not in active_games:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    session = active_games[game_id]
+    board: Board = session["board"]
+
+    # Mark the game as ended — the current player loses
+    # Store resign info so get_game_state can return it
+    session["resigned"] = board.current_player
 
     return await get_game_state(game_id)
 

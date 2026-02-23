@@ -60,6 +60,7 @@
     cursor: pointer;
     transition: background 0.15s;
     border: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 
 .light {
@@ -72,14 +73,42 @@
 
 .selected {
     background: #7cb342 !important;
+    box-shadow: inset 0 0 0 3px #558b2f;
 }
 
 .last-move {
     background: rgba(255, 215, 0, 0.4) !important;
 }
 
+/* Valid move target (empty square) — show a dot */
+.valid-target {
+    cursor: pointer;
+}
+
+.move-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+/* Valid capture target (square with enemy piece) — red ring */
+.valid-capture {
+    box-shadow: inset 0 0 0 4px rgba(200, 40, 40, 0.7);
+    cursor: pointer;
+}
+
 .square:hover {
     filter: brightness(1.1);
+}
+
+.valid-target:hover {
+    background: rgba(124, 179, 66, 0.3) !important;
+}
+
+.valid-capture:hover {
+    background: rgba(200, 40, 40, 0.15) !important;
 }
 
 .piece {

@@ -67,6 +67,16 @@ a {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.btn-danger {
+  background: #c62828;
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background: #e53935;
+  transform: translateY(-1px);
+}
+
 h1,
 h2,
 h3 {

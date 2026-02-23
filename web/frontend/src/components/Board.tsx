@@ -6,6 +6,7 @@ interface BoardProps {
     validMoves?: number[]
     selected?: [number, number] | null
     lastMove?: { from_sq?: [number, number]; to_sq?: [number, number] } | null
+    highlightedSquares?: [number, number][]
     onSquareClick?: (row: number, col: number) => void
 }
 
@@ -23,8 +24,13 @@ export const Board: React.FC<BoardProps> = ({
     board,
     selected,
     lastMove,
+    highlightedSquares,
     onSquareClick
 }) => {
+    const highlightSet = new Set(
+        (highlightedSquares || []).map(([r, c]) => `${r},${c}`)
+    )
+
     const isSelected = (row: number, col: number): boolean => {
         return selected !== null && selected !== undefined && selected[0] === row && selected[1] === col
     }
@@ -35,6 +41,10 @@ export const Board: React.FC<BoardProps> = ({
         if (to_sq && to_sq[0] === row && to_sq[1] === col) return true
         if (from_sq && from_sq[0] === row && from_sq[1] === col) return true
         return false
+    }
+
+    const isHighlighted = (row: number, col: number): boolean => {
+        return highlightSet.has(`${row},${col}`)
     }
 
     const handleClick = (row: number, col: number) => {
@@ -59,11 +69,14 @@ export const Board: React.FC<BoardProps> = ({
                         <div key={row} className="row">
                             {[0, 1, 2, 3, 4].map(col => {
                                 const piece = board[row][col]
+                                const highlighted = isHighlighted(row, col)
                                 const squareClasses = [
                                     'square',
                                     (row + col) % 2 === 0 ? 'light' : 'dark',
                                     isSelected(row, col) ? 'selected' : '',
-                                    isLastMove(row, col) ? 'last-move' : ''
+                                    isLastMove(row, col) ? 'last-move' : '',
+                                    highlighted && piece === 0 ? 'valid-target' : '',
+                                    highlighted && piece !== 0 ? 'valid-capture' : ''
                                 ].filter(Boolean).join(' ')
 
                                 return (
@@ -76,6 +89,9 @@ export const Board: React.FC<BoardProps> = ({
                                             <span className={`piece ${piece > 0 ? 'player1' : 'player2'}`}>
                                                 {getPieceChar(piece)}
                                             </span>
+                                        )}
+                                        {highlighted && piece === 0 && (
+                                            <span className="move-dot" />
                                         )}
                                     </div>
                                 )
