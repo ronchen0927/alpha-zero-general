@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from minishogi import MiniShogiGame, Move, PieceType
+from minishogi.ai_players import create_ai_player
 from minishogi.logic import Board
 from minishogi.pytorch import NNetWrapper
 
@@ -24,6 +25,7 @@ class NewGameRequest(BaseModel):
     vs_ai: bool = False
     ai_first: bool = False
     mode: str = "manual"  # "manual" (both sides) or "ai"
+    ai_algorithm: str = "random"
 
 
 class NewGameResponse(BaseModel):
@@ -53,6 +55,7 @@ class GameState(BaseModel):
     valid_moves: list[int]
     game_ended: int
     last_move: dict | None = None
+    ai_move: dict | None = None  # info about AI's last move
 
 
 class AIAnalysis(BaseModel):
@@ -63,6 +66,56 @@ class AIAnalysis(BaseModel):
     top_moves: list[dict]  # Top 5 moves with probabilities
 
 
+def _board_to_hands(board: Board) -> list[dict[str, int]]:
+    return [
+        {str(k.value): v for k, v in board.hands[0].items()},
+        {str(k.value): v for k, v in board.hands[1].items()},
+    ]
+
+
+def _execute_ai_move(session: dict[str, Any]) -> dict | None:
+    """If it's the AI's turn, make a move and return move info."""
+    if not session.get("vs_ai"):
+        return None
+    if session.get("resigned"):
+        return None
+
+    game: MiniShogiGame = session["game"]
+    board: Board = session["board"]
+    ai_player_side: int = session["ai_player"]
+
+    # Only move if it's the AI's turn
+    if board.current_player != ai_player_side:
+        return None
+
+    # Check if game already ended
+    if game.getGameEnded(board, board.current_player) != 0:
+        return None
+
+    ai = session["ai"]
+    action = ai.play(board, ai_player_side)
+
+    # Decode action to Move for execution
+    # Actions from getValidMoves are in original coordinates — no transform needed
+    move = Move.from_action_index(action)
+
+    new_board = board.copy()
+    new_board.current_player = ai_player_side
+    new_board.execute_move(move)
+    new_board.current_player = -ai_player_side
+
+    session["board"] = new_board
+
+    move_info = {
+        "from_sq": move.from_sq,
+        "to_sq": move.to_sq,
+        "promote": move.promote,
+        "drop_piece": move.drop_piece.value if move.drop_piece else None,
+    }
+    session["moves_history"].append(move_info)
+    return move_info
+
+
 @router.post("/new", response_model=NewGameResponse)
 async def create_game(request: NewGameRequest) -> NewGameResponse:
     """Create a new game session."""
@@ -70,7 +123,7 @@ async def create_game(request: NewGameRequest) -> NewGameResponse:
     game = MiniShogiGame()
     board = game.getInitBoard()
 
-    active_games[game_id] = {
+    session: dict[str, Any] = {
         "game": game,
         "board": board,
         "vs_ai": request.vs_ai,
@@ -78,14 +131,24 @@ async def create_game(request: NewGameRequest) -> NewGameResponse:
         "moves_history": [],
     }
 
+    if request.vs_ai:
+        ai = create_ai_player(request.ai_algorithm, game)
+        session["ai"] = ai
+        session["ai_algorithm"] = request.ai_algorithm
+        # AI plays the side the human didn't pick
+        session["ai_player"] = -1 if not request.ai_first else 1
+
+        # If AI goes first, make its move now
+        if request.ai_first:
+            _execute_ai_move(session)
+
+    active_games[game_id] = session
+
     return NewGameResponse(
         game_id=game_id,
-        board=board.board.tolist(),
-        current_player=board.current_player,
-        hands=[
-            {str(k.value): v for k, v in board.hands[0].items()},
-            {str(k.value): v for k, v in board.hands[1].items()},
-        ],
+        board=session["board"].board.tolist(),
+        current_player=session["board"].current_player,
+        hands=_board_to_hands(session["board"]),
     )
 
 
@@ -102,8 +165,7 @@ async def get_game_state(game_id: str) -> GameState:
     # Check for resignation
     resigned = session.get("resigned")
     if resigned:
-        # The player who resigned loses
-        game_ended = -resigned  # opponent wins
+        game_ended = -resigned
         valid_indices: list[int] = []
     else:
         valids = game.getValidMoves(board, board.current_player)
@@ -113,10 +175,7 @@ async def get_game_state(game_id: str) -> GameState:
     return GameState(
         board=board.board.tolist(),
         current_player=board.current_player,
-        hands=[
-            {str(k.value): v for k, v in board.hands[0].items()},
-            {str(k.value): v for k, v in board.hands[1].items()},
-        ],
+        hands=_board_to_hands(board),
         valid_moves=valid_indices,
         game_ended=game_ended,
         last_move=session["moves_history"][-1] if session["moves_history"] else None,
@@ -150,7 +209,6 @@ async def make_move(game_id: str, request: MoveRequest) -> GameState:
         raise HTTPException(status_code=400, detail="Invalid move")
 
     # Execute the move directly on a board copy
-    # (avoid getNextState which expects canonical actions for player -1)
     new_board = board.copy()
     new_board.current_player = player
     new_board.execute_move(move)
@@ -164,7 +222,13 @@ async def make_move(game_id: str, request: MoveRequest) -> GameState:
         "drop_piece": request.drop_piece,
     })
 
-    return await get_game_state(game_id)
+    # If vs AI, trigger AI's response move
+    ai_move_info = _execute_ai_move(session)
+
+    state = await get_game_state(game_id)
+    if ai_move_info:
+        state.ai_move = ai_move_info
+    return state
 
 
 @router.post("/{game_id}/resign", response_model=GameState)
@@ -176,8 +240,6 @@ async def resign(game_id: str) -> GameState:
     session = active_games[game_id]
     board: Board = session["board"]
 
-    # Mark the game as ended — the current player loses
-    # Store resign info so get_game_state can return it
     session["resigned"] = board.current_player
 
     return await get_game_state(game_id)
@@ -193,12 +255,9 @@ async def get_ai_analysis(game_id: str) -> AIAnalysis:
     game: MiniShogiGame = session["game"]
     board: Board = session["board"]
 
-    # Get neural network prediction
-    # Note: In production, cache the nnet instance
     nnet = NNetWrapper(game)
     pi, v = nnet.predict(board)
 
-    # Get top 5 moves
     valids = game.getValidMoves(board, board.current_player)
     valid_probs = [(i, pi[i]) for i in range(len(pi)) if valids[i] == 1]
     valid_probs.sort(key=lambda x: x[1], reverse=True)
@@ -228,7 +287,6 @@ async def websocket_game(websocket: WebSocket, game_id: str):
             data = await websocket.receive_json()
 
             if data.get("type") == "move":
-                # Process move
                 request = MoveRequest(**data.get("payload", {}))
                 try:
                     state = await make_move(game_id, request)

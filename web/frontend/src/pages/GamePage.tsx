@@ -163,6 +163,7 @@ export const GamePage: React.FC = () => {
     const [gameId, setGameId] = useState<string | null>(null)
     const [gameState, setGameState] = useState<GameState | null>(null)
     const [loading, setLoading] = useState(false)
+    const [thinking, setThinking] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [selectedSquare, setSelectedSquare] = useState<[number, number] | null>(null)
     const [selectedHandPiece, setSelectedHandPiece] = useState<number | null>(null)
@@ -274,6 +275,9 @@ export const GamePage: React.FC = () => {
         if (fromSq) payload.from_sq = fromSq
         if (dropPiece) payload.drop_piece = dropPiece
 
+        // Show thinking state if vs AI (backend will auto-compute AI response)
+        if (settings.mode === 'ai') setThinking(true)
+
         try {
             const res = await fetch(`/api/game/${gameId}/move`, {
                 method: 'POST',
@@ -289,6 +293,8 @@ export const GamePage: React.FC = () => {
             setError(null)
         } catch (e) {
             setError((e as Error).message)
+        } finally {
+            setThinking(false)
         }
     }
 
@@ -310,7 +316,7 @@ export const GamePage: React.FC = () => {
     }
 
     const handleSquareClick = (row: number, col: number) => {
-        if (!gameState || gameState.game_ended !== 0) return
+        if (!gameState || gameState.game_ended !== 0 || thinking) return
 
         if (selectedHandPiece !== null) {
             const key = `${row},${col}`
@@ -400,6 +406,7 @@ export const GamePage: React.FC = () => {
                 <div className="board-wrapper">
                     {loading && <div className="loading">載入中...</div>}
                     {error && <div className="error">{error}</div>}
+                    {thinking && <div className="thinking-overlay">🤖 AI思考中...</div>}
                     {gameState && (
                         <Board
                             board={gameState.board}
