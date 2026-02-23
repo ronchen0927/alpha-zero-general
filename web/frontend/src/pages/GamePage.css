@@ -33,6 +33,16 @@
     gap: 1rem;
 }
 
+.mode-badge {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 0.3rem 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    display: inline-block;
+    width: fit-content;
+}
+
 .status {
     font-size: 1.2rem;
     font-weight: bold;
@@ -45,6 +55,178 @@
 .actions {
     display: flex;
     gap: 0.5rem;
+}
+
+/* ─── Setup Screen ─── */
+
+.setup-screen {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 2rem;
+}
+
+.setup-card {
+    max-width: 480px;
+    width: 100%;
+}
+
+.setup-card h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.setup-section {
+    margin-bottom: 1.5rem;
+}
+
+.setup-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Mode Selector (Human vs AI) */
+.mode-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.mode-btn.active {
+    border-color: var(--accent);
+    background: rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+
+.mode-icon {
+    font-size: 2rem;
+}
+
+.mode-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Algorithm List */
+.algorithm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.algo-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.algo-category {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-left: 0.25rem;
+}
+
+.algo-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.algo-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.algo-btn.active {
+    border-color: var(--accent);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.algo-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.algo-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Side Selector */
+.side-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.side-btn {
+    padding: 0.7rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.side-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.side-btn.active {
+    border-color: var(--accent);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+/* Start Button */
+.start-btn {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
 }
 
 @media (max-width: 900px) {
