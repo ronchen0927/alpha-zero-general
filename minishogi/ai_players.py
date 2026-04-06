@@ -461,4 +461,12 @@ def create_ai_player(algorithm: str, game: MiniShogiGame) -> BaseAIPlayer:
     cls = _PLAYER_REGISTRY.get(algorithm)
     if cls is None:
         raise ValueError(f"Unknown AI algorithm: {algorithm}. Available: {list(_PLAYER_REGISTRY.keys())}")
+        
+    if algorithm == "alphazero":
+        import os
+        # 嘗試載入預設訓練好的模型
+        default_model = "./minishogi_checkpoints/best.pth.tar"
+        if os.path.exists(default_model):
+            return cls(game, model_path=default_model)
+            
     return cls(game)
