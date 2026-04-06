@@ -403,12 +403,22 @@ class AlphaZeroAI(BaseAIPlayer):
         if self._mcts is not None:
             return
 
-        from ..MCTS import MCTS
+        import os
+        import sys
+
+        # Ensure project root is on sys.path so we can import MCTS
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from MCTS import MCTS
         from .pytorch import NNetWrapper
 
         self._nnet = NNetWrapper(self.game)
         if self.model_path:
-            self._nnet.load_checkpoint(self.model_path)
+            folder = os.path.dirname(self.model_path)
+            filename = os.path.basename(self.model_path)
+            self._nnet.load_checkpoint(folder, filename)
 
         class Args:
             numMCTSSims = self.num_sims
