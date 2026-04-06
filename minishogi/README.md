@@ -131,6 +131,18 @@ uv run python pit_minishogi.py --mode greedy
 
 # vs 訓練好的 AI
 uv run python pit_minishogi.py --mode ai --model ./minishogi_checkpoints/best.pth.tar
+
+# AI vs AI (同一模型互相對戰)
+uv run python pit_minishogi.py --mode ai_vs_ai --model ./minishogi_checkpoints/best.pth.tar
+
+# AI vs AI (不同模型驗證，例如 best vs 訓練中的 checkpoint)
+uv run python pit_minishogi.py --mode ai_vs_ai --model ./minishogi_checkpoints/best.pth.tar --model2 ./minishogi_checkpoints/checkpoint_50.pth.tar
+
+# 貪婪演算法 vs 訓練好的 AI
+uv run python pit_minishogi.py --mode greedy_vs_ai --model ./minishogi_checkpoints/best.pth.tar
+
+# 隨機演算法 vs 訓練好的 AI
+uv run python pit_minishogi.py --mode random_vs_ai --model ./minishogi_checkpoints/best.pth.tar
 ```
 
 ### 輸入格式
@@ -157,7 +169,7 @@ uv run uvicorn web.backend.main:app --reload --port 8000
 cd web/frontend && npm run dev
 ```
 
-瀏覽器開啟 **http://localhost:5173**
+瀏覽器開啟 **<http://localhost:5173>**
 
 ### 功能頁面
 

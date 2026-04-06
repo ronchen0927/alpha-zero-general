@@ -23,9 +23,14 @@ def main():
     parser = argparse.ArgumentParser(description="Play MiniShogi")
     parser.add_argument(
         "--mode",
-        choices=["random", "greedy", "ai", "human"],
+        choices=["random", "greedy", "ai", "human", "ai_vs_ai", "greedy_vs_ai", "random_vs_ai"],
         default="random",
-        help="Opponent type: random, greedy, ai, or human (human vs human)",
+        help="Opponent type: random, greedy, ai, human, ai_vs_ai, greedy_vs_ai, or random_vs_ai",
+    )
+    parser.add_argument(
+        "--model2",
+        default=None,
+        help="Path to second trained model (for ai_vs_ai mode). If not provided, uses --model for both.",
     )
     parser.add_argument(
         "--model",
@@ -68,11 +73,12 @@ def main():
         player2 = greedy
     elif args.mode == "human":
         player2 = human
-    elif args.mode == "ai":
+    elif args.mode in ["ai", "ai_vs_ai", "greedy_vs_ai", "random_vs_ai"]:
         # Load trained neural network
         try:
             nnet = NNet(game)
-            nnet.load_checkpoint(*args.model.rsplit("/", 1))
+            folder, filename = args.model.rsplit("/", 1) if "/" in args.model else (".", args.model)
+            nnet.load_checkpoint(folder, filename)
             mcts_args = dotdict({"numMCTSSims": args.mcts_sims, "cpuct": 1.5})
             mcts = MCTS(game, nnet, mcts_args)
 
@@ -81,6 +87,27 @@ def main():
 
             player2 = ai_player
             print(f"Loaded AI model from: {args.model}")
+
+            if args.mode == "ai_vs_ai":
+                if args.model2:
+                    try:
+                        nnet2 = NNet(game)
+                        folder2, filename2 = args.model2.rsplit("/", 1) if "/" in args.model2 else (".", args.model2)
+                        nnet2.load_checkpoint(folder2, filename2)
+                        mcts2 = MCTS(game, nnet2, mcts_args)
+                        def ai_player2(x):
+                            return np.argmax(mcts2.getActionProb(x, temp=0))
+                        player1 = ai_player2
+                        print(f"Loaded Player 1 AI model from: {args.model2}")
+                    except FileNotFoundError:
+                        print(f"Model 2 not found: {args.model2}. Falling back to same model.")
+                        player1 = ai_player
+                else:
+                    player1 = ai_player
+            elif args.mode == "greedy_vs_ai":
+                player1 = greedy
+            elif args.mode == "random_vs_ai":
+                player1 = random_player
         except FileNotFoundError:
             print(f"Model not found: {args.model}")
             print("Falling back to greedy player.")
